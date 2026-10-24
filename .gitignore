@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+sync_agent/config.toml
+sync_agent/.vibe_sync.db
+.pytest_cache/

@@ -1,0 +1,87 @@
+# Builds the app for every platform and publishes it as a GitHub Release.
+#
+# Run it from the Actions tab ("Build app" -> "Run workflow"), or push a tag like v1.0.0.
+# Set these first in Settings -> Secrets and variables -> Actions -> Variables:
+#   VIBE_SUPABASE_URL  your Supabase project URL
+#   VIBE_SUPABASE_KEY  your Supabase publishable (anon) key
+# Then nobody has to type them into the app.
+name: Build app
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: 3.47.8
+  DEFINES: --dart-define=VIBE_SUPABASE_URL=${{ vars.VIBE_SUPABASE_URL }} --dart-define=VIBE_SUPABASE_KEY=${{ vars.VIBE_SUPABASE_KEY }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
+      - run: flutter build apk --release $DEFINES
+        working-directory: app
+      - run: mv app/build/app/outputs/flutter-apk/app-release.apk Vibe-android.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: android, path: Vibe-android.apk }
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
+      - run: flutter build windows --release ${{ env.DEFINES }}
+        working-directory: app
+      - run: Compress-Archive -Path app\build\windows\x64\runner\Release\* -DestinationPath Vibe-windows.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: Vibe-windows.zip }
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build libgtk-3-dev libmpv-dev mpv
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
+      - run: flutter build linux --release $DEFINES
+        working-directory: app
+      - run: tar -czf Vibe-linux.tar.gz -C app/build/linux/x64/release/bundle .
+      - uses: actions/upload-artifact@v4
+        with: { name: linux, path: Vibe-linux.tar.gz }
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
+      - run: flutter build macos --release $DEFINES
+        working-directory: app
+      - run: ditto -c -k --keepParent app/build/macos/Build/Products/Release/vibe.app Vibe-macos.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: macos, path: Vibe-macos.zip }
+
+  release:
+    needs: [android, windows, linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('build-{0}', github.run_number) }}
+          name: Vibe ${{ github.ref_type == 'tag' && github.ref_name || format('build {0}', github.run_number) }}
+          prerelease: ${{ github.ref_type != 'tag' }}
+          files: dist/*

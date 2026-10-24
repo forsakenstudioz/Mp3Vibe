@@ -1,0 +1,24 @@
+# Copy this file to config.toml and fill in your values.
+# Keep config.toml private: the keys below can change your library.
+
+# The folder on your laptop that holds your music. Subfolders are included.
+# Windows example: "C:/Users/zoro/Music/MyMusic"   (use forward slashes)
+# macOS example:   "~/Music/MyMusic"
+music_folder = "~/Music"
+
+# Set to false to skip mood analysis (faster, but suggestions get worse).
+analyze_mood = true
+
+[supabase]
+# Supabase Dashboard -> Project Settings -> API
+url = "https://YOUR-PROJECT.supabase.co"
+# The *secret* key (starts with sb_secret_) or the legacy service_role key.
+secret_key = "sb_secret_..."
+
+[r2]
+# Cloudflare Dashboard -> R2 -> Overview (Account ID is on the right side)
+account_id = "your-account-id"
+# R2 -> Manage API tokens -> Create API token (Object Read & Write)
+access_key_id = "..."
+secret_access_key = "..."
+bucket = "vibe-music"
